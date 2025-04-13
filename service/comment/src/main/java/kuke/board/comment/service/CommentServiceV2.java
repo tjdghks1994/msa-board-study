@@ -5,12 +5,14 @@ import kuke.board.comment.entity.CommentPath;
 import kuke.board.comment.entity.CommentV2;
 import kuke.board.comment.repository.CommentRepositoryV2;
 import kuke.board.comment.service.request.CommentCreateRequestV2;
+import kuke.board.comment.service.response.CommentPageResponseV2;
 import kuke.board.comment.service.response.CommentResponseV2;
 import kuke.board.common.snowflake.Snowflake;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.function.Predicate;
 
 @Service
@@ -57,6 +59,25 @@ public class CommentServiceV2 {
                         delete(commentV2.getCommentId());   // 실제 삭제
                     }
                 });
+    }
+
+    public CommentPageResponseV2 readAll(Long articleId, Long page, Long pageSize) {
+        return CommentPageResponseV2.of(
+                commentRepository.findAll(articleId, (page - 1) * pageSize, pageSize).stream()
+                        .map(CommentResponseV2::from)
+                        .toList(),
+                commentRepository.count(articleId, PageLimitCalculator.calculatePageLimit(page, pageSize, 10L))
+        );
+    }
+
+    public List<CommentResponseV2> readAllInfiniteScroll(Long articleId, String lastPath, Long pageSize) {
+        List<CommentV2> comments = lastPath == null ?
+                commentRepository.findAllInfiniteScroll(articleId, pageSize) :
+                commentRepository.findAllInfiniteScroll(articleId, lastPath, pageSize);
+
+        return comments.stream()
+                .map(CommentResponseV2::from)
+                .toList();
     }
 
     private CommentV2 findParent(CommentCreateRequestV2 request) {
