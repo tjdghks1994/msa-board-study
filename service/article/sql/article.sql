@@ -60,3 +60,8 @@ EXPLAIN SELECT COUNT(*)
         FROM (
             SELECT article_id FROM article WHERE board_id = 1 LIMIT 300,301
         ) t;
+
+create table board_article_count (
+    board_id bigint not null primary key,
+    article_count bigint not null
+);
