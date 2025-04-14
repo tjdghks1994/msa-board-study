@@ -1,8 +1,10 @@
 package kuke.board.comment.service;
 
 import jakarta.persistence.EntityNotFoundException;
+import kuke.board.comment.entity.ArticleCommentCount;
 import kuke.board.comment.entity.CommentPath;
 import kuke.board.comment.entity.CommentV2;
+import kuke.board.comment.repository.ArticleCommentCountRepository;
 import kuke.board.comment.repository.CommentRepositoryV2;
 import kuke.board.comment.service.request.CommentCreateRequestV2;
 import kuke.board.comment.service.response.CommentPageResponseV2;
@@ -20,6 +22,7 @@ import java.util.function.Predicate;
 public class CommentServiceV2 {
     private final Snowflake snowflake = new Snowflake();
     private final CommentRepositoryV2 commentRepository;
+    private final ArticleCommentCountRepository articleCommentCountRepository;
 
     @Transactional
     public CommentResponseV2 create(CommentCreateRequestV2 request) {
@@ -39,6 +42,13 @@ public class CommentServiceV2 {
                 )
         );
 
+        int result = articleCommentCountRepository.increase(request.getArticleId());
+        if (result == 0) {
+            articleCommentCountRepository.save(
+                    ArticleCommentCount.init(request.getArticleId(), 1L)
+            );
+        }
+
         return CommentResponseV2.from(comment);
     }
 
@@ -56,7 +66,7 @@ public class CommentServiceV2 {
                     if (hasChildren(commentV2)) {
                         commentV2.delete(); // 삭제 표시만
                     } else {
-                        delete(commentV2.getCommentId());   // 실제 삭제
+                        delete(commentV2);   // 실제 삭제
                     }
                 });
     }
@@ -80,6 +90,12 @@ public class CommentServiceV2 {
                 .toList();
     }
 
+    public Long count(Long articleId) {
+        return articleCommentCountRepository.findById(articleId)
+                .map(ArticleCommentCount::getCommentCount)
+                .orElse(0L);
+    }
+
     private CommentV2 findParent(CommentCreateRequestV2 request) {
         String parentPath = request.getParentPath();
         if (parentPath == null) {
@@ -100,6 +116,7 @@ public class CommentServiceV2 {
 
     private void delete(CommentV2 comment) {
         commentRepository.delete(comment);
+        articleCommentCountRepository.decrease(comment.getArticleId());
         if (!comment.isRoot()) {    // 삭제한 댓글이 상위댓글이 아닌경우
             commentRepository.findByPath(comment.getCommentPath().getParentPath())    // 상위경로 조회
                     .filter(CommentV2::getDeleted)    // 삭제 표시 상태인 상위댓글인지 확인
