@@ -9,6 +9,10 @@ import kuke.board.comment.repository.CommentRepositoryV2;
 import kuke.board.comment.service.request.CommentCreateRequestV2;
 import kuke.board.comment.service.response.CommentPageResponseV2;
 import kuke.board.comment.service.response.CommentResponseV2;
+import kuke.board.common.event.EventType;
+import kuke.board.common.event.payload.CommentCreatedEventPayload;
+import kuke.board.common.event.payload.CommentDeletedEventPayload;
+import kuke.board.common.outboxmessagerelay.OutboxEventPublisher;
 import kuke.board.common.snowflake.Snowflake;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +27,7 @@ public class CommentServiceV2 {
     private final Snowflake snowflake = new Snowflake();
     private final CommentRepositoryV2 commentRepository;
     private final ArticleCommentCountRepository articleCommentCountRepository;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public CommentResponseV2 create(CommentCreateRequestV2 request) {
@@ -49,6 +54,20 @@ public class CommentServiceV2 {
             );
         }
 
+        outboxEventPublisher.publish(
+                EventType.COMMENT_CREATED,
+                CommentCreatedEventPayload.builder()
+                        .commentId(comment.getCommentId())
+                        .content(comment.getContent())
+                        .articleId(comment.getArticleId())
+                        .writerId(comment.getWriterId())
+                        .deleted(comment.getDeleted())
+                        .createdAt(comment.getCreatedAt())
+                        .articleCommentCount(count(comment.getArticleId()))
+                        .build(),
+                comment.getArticleId()
+        );
+
         return CommentResponseV2.from(comment);
     }
 
@@ -68,6 +87,20 @@ public class CommentServiceV2 {
                     } else {
                         delete(commentV2);   // 실제 삭제
                     }
+
+                    outboxEventPublisher.publish(
+                            EventType.COMMENT_DELETED,
+                            CommentDeletedEventPayload.builder()
+                                    .commentId(commentV2.getCommentId())
+                                    .content(commentV2.getContent())
+                                    .articleId(commentV2.getArticleId())
+                                    .writerId(commentV2.getWriterId())
+                                    .deleted(commentV2.getDeleted())
+                                    .createdAt(commentV2.getCreatedAt())
+                                    .articleCommentCount(count(commentV2.getArticleId()))
+                                    .build(),
+                            commentV2.getArticleId()
+                    );
                 });
     }
 
