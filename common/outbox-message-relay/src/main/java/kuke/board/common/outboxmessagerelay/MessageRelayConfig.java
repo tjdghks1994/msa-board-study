@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
 @ComponentScan("kuke.board.common.outboxmessagerelay")
 @EnableScheduling
 public class MessageRelayConfig {
-    @Value("${spring.kafka.bootstrap-servers")
+    @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
     @Bean
