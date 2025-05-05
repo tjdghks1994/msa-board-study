@@ -25,7 +25,7 @@ public class CommentClient {
     public Long count(Long articleId) {
         try {
             return restClient.get()
-                    .uri("/v1/comments/articles/{articleId}/count", articleId)
+                    .uri("/v2/comments/articles/{articleId}/count", articleId)
                     .retrieve()
                     .body(Long.class);
         } catch (Exception e) {
