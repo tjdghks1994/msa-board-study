@@ -48,7 +48,7 @@ public class ArticleQueryModel {
         return articleQueryModel;
     }
 
-    public void updateB(CommentCreatedEventPayload payload) {
+    public void updateBy(CommentCreatedEventPayload payload) {
         this.articleCommentCount = payload.getArticleCommentCount();
     }
 
